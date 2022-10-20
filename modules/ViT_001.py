@@ -3,6 +3,7 @@
 
 import sys
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import array
 import glob
@@ -13,7 +14,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.autograd as autograd
 import torch.nn.functional as F
-import keyboard
 
 
 #%%
@@ -180,8 +180,9 @@ class MultiHeadSelfAttention(nn.Module):
         k_T = k.transpose(2, 3)
         ## (B, h, N, D//h) x (B, h, D//h, N) -> (B, h, N, N) 
         dots = (q @ k_T) / self.sqrt_dh
-        ## 列方向にソフトマックス関数
-        attn = F.softmax(dots, dim=-1)
+        ## 列方向にソフトマックス関数        #sigmoidにしてみる
+        #attn = F.softmax(dots, dim=-1)
+        attn = F.sigmoid(dots)
         ## ドロップアウト
         attn = self.attn_drop(attn)
         # 加重和 [式(8)]
@@ -331,8 +332,8 @@ class Vit(nn.Module):
         pred = self.mlp_head(cls_token)
         return pred
 
-num_classes = 10
-batch_size, channel, height, width= 1000, 3, 32, 32
+num_classes = 100
+batch_size, channel, height, width= 5000, 3, 32, 32
 x = torch.randn(batch_size, channel, height, width)
 vit = Vit(in_channels=channel, num_classes=num_classes) 
 pred = vit(x)
@@ -348,8 +349,8 @@ print(pred.shape)
 transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 # train, valid用データのダウンロード
-trainval_dataset = torchvision.datasets.CIFAR10(
-    root='../data/inputs/cifar10/', 
+trainval_dataset = torchvision.datasets.CIFAR100(
+    root='../data/inputs/cifar100/', 
     train=True, 
     download=True, 
     transform=transform
@@ -376,8 +377,8 @@ valid_loader = torch.utils.data.DataLoader(
 )
 
 # test用データをダウンロード
-test_dataset = torchvision.datasets.CIFAR10(
-    root='../data/inputs/cifar10/', 
+test_dataset = torchvision.datasets.CIFAR100(
+    root='../data/inputs/cifar100/', 
     train=False, 
     download=True, 
     transform=transform
@@ -392,23 +393,23 @@ test_loader = torch.utils.data.DataLoader(
 
 #%%
 #shape等の確認
-obj = test_dataset
-print()
+#obj = test_dataset
+#print()
 #self.で定義されている変数を確認
-print(obj.__dict__.keys())
-print(obj.data.shape)
+#print(obj.__dict__.keys())
+#print(obj.data.shape)
 
-print(train_loader.__dict__.keys())
-type(train_loader.dataset)
-obj = trainval_dataset
-print(obj.__dict__.keys())
-print(obj.class_to_idx)
+#print(train_loader.__dict__.keys())
+#type(train_loader.dataset)
+#obj = trainval_dataset
+#print(obj.__dict__.keys())
+#print(obj.class_to_idx)
 #%%
 
 # network
 net = Vit(in_channels=channel, num_classes=num_classes) 
 lr = 0.001
-n_epochs = 10
+n_epochs = 50
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 #device = "cpu"
@@ -416,7 +417,8 @@ net.to(device)
 
 # loss and optimizer
 criterion = nn.CrossEntropyLoss() 
-optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9) 
+#optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9) 
+optimizer = optim.Adam(net.parameters(), lr=lr) 
 
 history_loss_train = []
 history_acc_train  = []
@@ -543,8 +545,6 @@ torch.save(net.state_dict(), "../data/outputs/trained_model/model_{}.pth".format
 
 #%%
 #loss,accの保存
-import pandas as pd
-import matplotlib.pyplot as plt
 #history_loss_train, history_acc_train, history_loss_valid, history_acc_valid = [0.843,0.593,0.480,0.395,0.288], [0.522,0.690,0.755,0.822,0.851], [0.943,0.793,0.680,0.530,0.423], [0.480,0.650,0.705,0.802,0.801]
 
 df = pd.DataFrame({'Train_loss': history_loss_train,
@@ -568,14 +568,9 @@ fnames.to_csv('../data/outputs/history/filename_list.csv', index=False)
 
 
 
-
-
-
-
-
-
-
 #%%
+
+
 
 
 
@@ -585,6 +580,8 @@ fnames.to_csv('../data/outputs/history/filename_list.csv', index=False)
 #過去のデータ閲覧用
 #++-----------------------------------
 #history.csvからのグラフ表示
+import pandas as pd
+import matplotlib.pyplot as plt
 #hist_id = id_now
 #hist_id = '2022-10-19-17-54-15'
 #csvの名前リスト取得
@@ -600,4 +597,6 @@ plt.show()
 histdata.plot(title = 'acc_history', y = ['Train_acc', 'Valid_acc'], colormap = 'prism')
 plt.show()
 
+
+#%%
 
