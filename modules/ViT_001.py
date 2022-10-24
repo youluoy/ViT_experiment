@@ -75,7 +75,7 @@ class VitInputLayer(nn.Module):
                 B:バッチサイズ、N:トークン数、D:埋め込みベクトルの長さ
         """
         # パッチの埋め込み & flatten [式(3)]
-        ## パッチの埋め込み (B, C, H, W) -> (B, D, H/P, W/P) 1ch毎に4パッチに分割されるため、D=C*P
+        ## パッチの埋め込み (B, C, H, W) -> (B, D, H/P, W/P) 
         ## ここで、Pはパッチ1辺の大きさ
         z_0 = self.patch_emb_layer(x)
 
@@ -598,5 +598,79 @@ histdata.plot(title = 'acc_history', y = ['Train_acc', 'Valid_acc'], colormap = 
 plt.show()
 
 
-#%%
 
+
+
+
+
+
+
+
+
+#%%
+a = torch.ones(2, 3, 4, 4)
+su = torch.sum(a, 1)
+print(su.size())
+print(su.unsqueeze(dim=1).size())
+
+
+print(a.unfold(2, 2, 2).size())
+print(a.unfold(3, 2, 2).size())
+
+
+b = torch.ones(2, 4, 4, 4)
+
+inputs = torch.ones(2,3,4,4)
+filters = torch.ones(3,3,2,2)
+F.conv2d(inputs, filters, padding=0)
+filters[:,1,:,:] = torch.ones(2,2) + torch.ones(2,2)
+filters[:,2,:,:] = torch.ones(2,2) + torch.ones(2,2) + torch.ones(2,2)
+filters
+
+c = F.conv2d(inputs, filters, padding=0)
+print(c.size())
+#print(c)
+
+e = torch.zeros(2, 3, 4, 4)
+r = 0
+for i in range(2):
+    for j in range(3):
+        for k in range(4):
+            for l in range(4):
+                a[i,j,k,l] = r
+                r += 1
+
+d = a.unfold(2, 2, 2).unfold(3, 2, 2)
+print(d.size())
+f = d.reshape(2, 3, -1, 2, 2)
+print(f.size())
+print(f)
+g = f.permute(0, 2, 1, 3, 4)
+print(g.size())
+print(g)
+
+print(inputs.size())
+img = inputs.unsqueeze(dim=1)
+print(img.size())
+print(g.size())
+#%%
+print("inputs.{}".format(inputs[0].unsqueeze(dim=0).size()))
+window = g[0]
+print("window.{}".format(window.size()))
+h = F.conv2d(inputs[0].unsqueeze(dim=0), window, padding=0)
+print("h.{}".format(h.size()))
+print(h)
+# %%
+print(h.size()[0])
+n = torch.zeros_like(h)
+m = n.size()
+#m[0] = 10
+print(m)
+
+hh = torch.zeros(1,2,2)
+ww = torch.zeros(1,2,2)
+bb = []
+bb.append(hh)
+bb.append(ww)
+cc = torch.cat(bb, dim = 0)
+print(cc.size())
