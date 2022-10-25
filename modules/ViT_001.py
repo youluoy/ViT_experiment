@@ -409,7 +409,7 @@ test_loader = torch.utils.data.DataLoader(
 # network
 net = Vit(in_channels=channel, num_classes=num_classes) 
 lr = 0.001
-n_epochs = 50
+n_epochs = 30
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 #device = "cpu"
@@ -606,7 +606,6 @@ plt.show()
 
 
 
-
 #%%
 a = torch.ones(2, 3, 4, 4)
 su = torch.sum(a, 1)
@@ -630,7 +629,7 @@ filters
 c = F.conv2d(inputs, filters, padding=0)
 print(c.size())
 #print(c)
-
+#%%
 e = torch.zeros(2, 3, 4, 4)
 r = 0
 for i in range(2):
@@ -640,8 +639,9 @@ for i in range(2):
                 a[i,j,k,l] = r
                 r += 1
 
-d = a.unfold(2, 2, 2).unfold(3, 2, 2)
+d = e.unfold(2, 2, 2).unfold(3, 2, 2)
 print(d.size())
+#%%
 f = d.reshape(2, 3, -1, 2, 2)
 print(f.size())
 print(f)
@@ -674,3 +674,77 @@ bb.append(hh)
 bb.append(ww)
 cc = torch.cat(bb, dim = 0)
 print(cc.size())
+
+#%%
+torch.cuda.is_available()
+x = torch.zeros(1, 2, 2)
+y = x.copy()
+y[:,:,:] = 1
+print(x)
+
+#%%
+device = 'cuda'
+x = torch.tensor([2.0], device=device, requires_grad=False)
+w = torch.tensor([1.0], device=device, requires_grad=True)
+b = torch.tensor([3.0], device=device, requires_grad=True)
+
+y = x*w + b
+y.backward()
+
+z = w.detach()
+s = z.clone()
+
+print(z)
+print(z.grad)
+print(z is w)
+print(z.is_leaf)
+
+print(s)
+print(s.grad)
+print(s is z)
+print(s.is_leaf)
+#%%
+
+
+aa = torch.ones(2, 2, 2, 2)
+aa = torch.flatten(aa, start_dim=2)
+aa.size()
+m = nn.ReLU()
+print(m(aa))
+
+#%%
+l = 0
+cc = torch.zeros(2, 3, 4, 2, 2)
+for i in range(cc.size()[0]):
+    for j in range(cc.size()[1]):
+        for k in range(cc.size()[2]):  
+            cc[i,j,k,:] = l
+            l += 1
+#print(cc)
+cc = cc.permute(0, 1, 3, 4, 2)
+cc = cc.reshape(2, 3*2*2, 4)
+fold = nn.Fold(output_size=(4, 4), kernel_size=(2,2))
+cc = fold(cc)
+print(cc)
+
+
+#%%
+
+l=0
+cc = torch.zeros(2, 3, 4, 2, 2)
+for i in range(cc.size()[0]):
+    for j in range(cc.size()[1]):
+        for k in range(cc.size()[2]):  
+            cc[i,j,k,:] = l
+            l += 1
+cc = cc.permute(0, 2, 1, 3, 4)
+dd = torchvision.utils.make_grid(cc[0], nrow=2, padding=0)
+print(dd)
+dd.size()
+
+
+#%%
+li = nn.Linear(10, 20)
+ab = torch.ones(2, 3, 4, 10)
+cd = li(ab)
+print(cd.size())
