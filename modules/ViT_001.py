@@ -340,3 +340,5 @@ class Vit(nn.Module):
 
 # (2, 10)(=(B, M))になっていることを確認 
 #print(pred.shape)
+
+

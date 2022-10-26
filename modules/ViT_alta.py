@@ -63,6 +63,27 @@ class PatchSelfConv(nn.Module):
                 )
             )
         
+        self.ffn_layer1 = nn.Sequential(
+                    nn.Linear(self.hid_image_pix, ffn_dim), 
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(ffn_dim, self.patch_pix), 
+                    nn.Dropout(dropout)
+                )
+        self.ffn_layer2 = nn.Sequential(
+                    nn.Linear(self.hid_image_pix, ffn_dim), 
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(ffn_dim, self.patch_pix), 
+                    nn.Dropout(dropout)
+                )
+        self.ffn_layer3 = nn.Sequential(
+                    nn.Linear(self.hid_image_pix, ffn_dim), 
+                    nn.GELU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(ffn_dim, self.patch_pix), 
+                    nn.Dropout(dropout)
+                )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """ 
@@ -93,38 +114,60 @@ class PatchSelfConv(nn.Module):
         #z_0 = torch.Tensor()
         #for i in range(self.num_patch):
         #    z_0[i] = F.conv2d(x, x[:,:,i*self.num_patch_row:(i+1)*self.num_patch_row, i*self.num_patch_row:(i+1)*self.num_patch_row])
-
+        #print(1)
+        #print(x.size())
         batch_size = x.size()[0]
         # 入力テンソルを複製 detach():値共有、伝播オフ clone():値非共有、伝播cloneもとと同じ
         ## (B, C, H, W)
-        z_0 = x.detach().clone()
+        #print(2)
+        z_0 = x.detach().clone() 
         # パッチに分割し、パッチ数分のフィルタを作成する
         ## (B, C, H, W) -> (B, C, P, patch_size, patch_size)
-        z_0 = z_0.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
-        z_0 = z_0.reshape(batch_size, self.in_channels, self.num_patch, self.patch_size, self.patch_size)
+        #print(3)
+        z_0 = z_0.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size) 
+        z_0 = z_0.reshape(batch_size, self.in_channels, self.num_patch, self.patch_size, self.patch_size) 
         #並べ替えしてF.conv2d用の形にする
         ## (B, C, P, patch_size, patch_size) -> (B, P, C, patch_size, patch_size)
+        #print(4)
         z_0 = z_0.permute(0, 2, 1, 3, 4)
         # 作ったパッチと画像との畳み込み演算を行う F.covn2d outputチャンネル方向がパッチの枚数に対応する
         ## -> (B, P, hid_image_size, hid_image_size)
-        hid_feature = torch.zeros(batch_size, self.num_patch, self.hid_image_size, self.hid_image_size)
+        #print(5)
+        hid_feature = [] #torch.zeros(batch_size, self.num_patch, self.hid_image_size, self.hid_image_size)
         for i in range(batch_size):
-            hid_feature[i] = F.conv2d(x[i].unsqueeze(dim=0), z_0[i])
+            hid_feature.append(F.conv2d(x[i].unsqueeze(dim=0), z_0[i]))
+        hid_feature = torch.cat(hid_feature, dim=0)
         # flatten
         ## -> (B, P, hid_image_pix)
+        #print(6)
         hid_feature = torch.flatten(hid_feature, start_dim=2)
         # 全結合を用いてもとのパッチサイズに戻す　チャンネルが増える
         ## (B, P, hid_image_pix) -> (B, C, P, patch_pix)
-        out_patch = torch.zeros(batch_size, self.in_channels, self.num_patch, self.patch_pix)
+        #print(7)
+        out_patch = [] #torch.zeros(batch_size, self.in_channels, self.num_patch, self.patch_pix)
+        '''
         for i in range(self.in_channels):
-            out_patch[:,i,:,:] = self.ffn_layer[i](hid_feature)
+            print("before ffn")
+            hid_out = self.ffn_layer[i](hid_feature ) 
+            print("after ffn")
+            hid_out = hid_out.unsqueeze(dim=1) 
+            out_patch.append(hid_out)
+        '''
+        out_patch.append(self.ffn_layer1(hid_feature).unsqueeze(dim=1))
+        out_patch.append(self.ffn_layer2(hid_feature).unsqueeze(dim=1))
+        out_patch.append(self.ffn_layer3(hid_feature).unsqueeze(dim=1))
+        out_patch = torch.cat(out_patch, dim=1)
         # reshape 
         ## (B, C, P, patch_pix) -> (B, C, H, W)
+        #print(8)
         out_patch = out_patch.reshape(batch_size, self.in_channels, self.num_patch, self.patch_size, self.patch_size)
         out_patch = out_patch.permute(0, 2, 1, 3, 4)
-        out = torch.zeros(batch_size, self.in_channels, self.image_size, self.image_size)
+        #print(9)
+        out = [] #torch.zeros(batch_size, self.in_channels, self.image_size, self.image_size)
         for i in range(batch_size):
-            out[i] = torchvision.utils.make_grid(out_patch[0], nrow=self.num_patch_row, padding=0)
+            out.append(torchvision.utils.make_grid(out_patch[0], nrow=self.num_patch_row, padding=0).unsqueeze(dim=0))
+        out = torch.cat(out, dim=0)
+        #print(out.size())
         return out
         
 
